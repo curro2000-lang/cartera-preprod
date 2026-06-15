@@ -1,0 +1,64 @@
+1. Filosofía
+
+La cartera se divide en dos capas complementarias:
+
+- Core Indexado: DCA automático mensual en fondos de bajo coste (captura el mercado sin intervención).
+- Satélite Activo: Máximo de 9–12 posiciones (sin congelar) en empresas de alta convicción con moat identificable (genera alfa sobre el mercado a largo plazo).
+
+El satélite no es un índice disfrazado ni una apuesta concentrada en una narrativa. Combina empresas resilientes en distintos entornos macro con un proceso de gestión disciplinado y replicable.
+
+2. Filtros de Entrada — Nuevas Posiciones
+
+Toda nueva posición debe superar dos filtros en secuencia:
+
+1. Filtro 1 — Calidad del Moat: ¿Tiene la empresa una ventaja competitiva duradera y difícil de replicar? Sin moat identificable, no se invierte independientemente del precio.
+2. Filtro 2 — Timing Técnico: RSI semanal Y diario en zona ~30. Ambos timeframes deben confirmar; uno solo no es suficiente.
+
+3. Fases de Construcción de Posición
+
+- Fase 1 — Entrada Inicial: Moat confirmado + RSI 30. Posición pequeña (€200). Primer compromiso con la tesis.
+- Fase 2 — Escala en Corrección Externa: Moat intacto + factor externo temporal (geopolítica, capex puntual, macro). No requiere RSI 30; el análisis previo de la empresa sustituye al filtro técnico. Tramos moderados (€100–200).
+- Fase 3 — Promediación en Tesis Deteriorada: Nuevos soportes técnicos + evaluación actualizada de moat y convicción. Aportaciones crecientes (el 3.º al 5.º tramo es el más cuantioso). El último tramo activa automáticamente la Fase 4.
+- Fase 4 — Congelación: Sin aportaciones adicionales. Posición dejada trabajar con el tiempo. Revisión obligatoria en cada earnings trimestral.
+
+4. DCA Asimétrico — Reglas de Aportación
+
+- Capitalización: Más capital en debilidad, menos o nada en subidas.
+- Restricciones: Nunca se entra en gap alcista ni tras catalizador positivo de mercado.
+- Escalado: Las posiciones ganadoras se escalan solo cuando hay corrección externa temporal con moat intacto.
+- Gestión de Riesgo: Las posiciones con baja convicción se congelan, no se promedian indefinidamente.
+
+5. Calibración de la Fase 3
+
+La intensidad de la promediación se calibra según la fortaleza del moat y la convicción personal:
+
+- Moat fuerte + Convicción alta: Fase 3 completa (4–5 tramos cuantiosos). Ejemplo: Hermès.
+- Moat fuerte + Convicción media: Fase 3 limitada (2–3 tramos moderados). Ejemplo: DPZ.
+- Moat dudoso + Convicción baja: Fase 3 cancelada (congelación anticipada). Ejemplo: Prosus.
+
+6. Señales de Alerta (Cancelación de Promediación)
+
+- Deterioro estructural del moat (pérdida de pricing power, competidor disruptivo).
+- Revisiones a la baja recurrentes de guidance (dos o más trimestres consecutivos).
+- Cambio regulatorio o geopolítico permanente que afecte al modelo de negocio.
+- Pérdida de cuota de mercado sostenida, no puntual.
+
+7. Límites del Satélite
+
+- Concentración: Máximo 9–12 posiciones (sin congelar).
+- Diversificación: Sin duplicar exposición sectorial.
+- Geografía: Sin exposición directa a China. Preferencia por acciones europeas en euros para evitar costes de conversión (excepción: empresas con moat único).
+- Criterio de Exclusión: Sin entrar en empresas sin moat identificable, independientemente del precio o momentum.
+
+8. Gestión de la Liquidez
+
+- Almacenamiento: Liquidez excedente en cuenta remunerada mientras espera oportunidades.
+- Colchón Estructural: El capital invertido en el satélite no supera la mitad de la liquidez disponible.
+- Disciplina: La liquidez no genera presión para invertir. La paciencia es una ventaja competitiva.
+- Plan de Escala: Aumentar gradualmente los importes por tramo en posiciones de alta convicción conforme madura la metodología.
+
+9. Revisión Periódica
+
+- Post-Earnings: Tras cada reporte trimestral, verificar señales de alerta y decidir si continuar en Fase 4 o activar rotación.
+- Posiciones Zombie: Se revisan con el siguiente earnings como catalizador.
+- Watchlist: No existe límite de tiempo; se espera el nivel técnico correcto sin presión.

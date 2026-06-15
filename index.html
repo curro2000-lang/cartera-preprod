@@ -1,0 +1,76 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Cartera — Dashboard IA Pro</title>
+    <link href="https://fonts.googleapis.com/css2?family=DM+Mono:wght@400;500&family=Fraunces:ital,wght@0,300;0,600;0,700;1,300&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="styles.css">
+
+    <script type="importmap"> { "imports": { "@google/generative-ai": "https://esm.run/@google/generative-ai" } } </script>
+</head>
+<body>
+<div class="wrapper">
+    <header>
+        <div class="logo"><h1>cartera<span>.</span></h1><p>Gestión Activa — Dashboard Watch-only</p></div>
+        <div class="header-right">
+            <div id="last-update" style="color:var(--muted); font-size:10px; margin-bottom:5px;">Iniciando sistema...</div>
+            <button class="refresh-btn" id="refresh-btn">⟳ <span id="timer-text">Actualizar Ahora</span></button>
+            <button class="secondary-btn" id="configure-ai-btn" title="Opcional: activar informes IA en este navegador">IA opcional</button>
+        </div>
+    </header>
+
+    <div class="summary-grid">
+        <div class="card"><div class="card-label">Invertido</div><div class="card-value" id="total-invested">—</div></div>
+        <div class="card"><div class="card-label">Valor Actual</div><div class="card-value" id="total-value">—</div></div>
+        <div class="card"><div class="card-label">P&L Neto</div><div class="card-value" id="total-pnl">—</div></div>
+        <div class="card"><div class="card-label">Dips Activos (F2)</div><div class="card-value" id="dip-count" style="color:var(--green)">0</div></div>
+        <div class="card"><div class="card-label">Mayor Sector</div><div class="card-value" id="top-sector">—</div><div class="risk-note" id="top-sector-note">Riesgo agregado</div></div>
+        <div class="card"><div class="card-label">Mayor Divisa</div><div class="card-value" id="top-currency">—</div><div class="risk-note" id="fx-rate-note">FX aplicado</div></div>
+        <div class="card"><div class="card-label">Top 3 Peso</div><div class="card-value" id="top3-weight">—</div><div class="risk-note">Concentración</div></div>
+    </div>
+
+    <div class="section-title">Posiciones en Cartera</div>
+    <div class="table-wrap">
+        <table>
+            <thead>
+                <tr>
+                    <th>Empresa</th>
+                    <th class="right">Invertido</th>
+                    <th class="right">% Cartera</th> 
+                    <th class="right">PER</th>
+                    <th class="right">Entrada | Máx</th>
+                    <th class="right">Actual</th>
+                    <th class="right">RSI D (W)</th>
+                    <th class="right">vs Máx</th>
+                    <th class="right">Variación</th>
+                    <th>Fase</th>
+                </tr>
+            </thead>
+            <tbody id="portfolio-body"></tbody>
+        </table>
+    </div>
+
+    <div class="section-title">Watchlist de Seguimiento</div>
+    <div class="table-wrap">
+        <table>
+            <thead>
+                <tr>
+                    <th>Empresa</th>
+                    <th class="right">Precio Actual</th>
+                    <th class="right">RSI (D|W)</th>
+                    <th>Condición</th>
+                    <th>Estado</th>
+                </tr>
+            </thead>
+            <tbody id="watchlist-body"></tbody>
+        </table>
+    </div>
+    <div id="contenedor-informe-global" class="ia-report-card" style="display: none;"></div>
+</div>
+
+<script type="module" src="app.js"></script>
+
+    
+</body>
+</html>
