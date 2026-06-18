@@ -31,6 +31,94 @@ document.getElementById('configure-ai-btn')?.addEventListener('click', () => {
 let persistence = JSON.parse(localStorage.getItem('CARTERA_MAXIMOS')) || {};
 const marketCache = new Map();
 let usdEurRateCache = null;
+let usdEurRateIsFallback = false;
+const STALE_DATA_MS = 60 * 60 * 1000;
+let lastSuccessfulUpdate = null;
+let healthRun = null;
+
+function formatHealthDate(date) {
+    return date.toLocaleString('es-ES', {
+        day: '2-digit',
+        month: 'short',
+        year: 'numeric',
+        hour: '2-digit',
+        minute: '2-digit'
+    });
+}
+
+function setDataHealth(state, status, timeText, detail) {
+    const box = document.getElementById('data-health');
+    const statusEl = document.getElementById('data-health-status');
+    const timeEl = document.getElementById('last-update');
+    const detailEl = document.getElementById('data-health-detail');
+    if (!box || !statusEl || !timeEl || !detailEl) return;
+
+    box.className = `data-health data-health-${state}`;
+    statusEl.textContent = status;
+    timeEl.textContent = timeText;
+    detailEl.textContent = detail;
+}
+
+function startHealthRun() {
+    healthRun = {
+        portfolioOk: false,
+        portfolioCount: 0,
+        marketLive: 0,
+        marketFallback: 0,
+        marketMissing: 0,
+        fxFallback: false
+    };
+    setDataHealth('loading', 'Actualizando...', 'Consultando cartera y mercado', 'Cartera pendiente - Mercado pendiente');
+}
+
+function finishHealthRun() {
+    if (!healthRun) return;
+
+    const now = new Date();
+    lastSuccessfulUpdate = now;
+    const timeText = `Datos actualizados: ${formatHealthDate(now)}`;
+    const detailParts = [
+        healthRun.portfolioOk ? `Cartera OK (${healthRun.portfolioCount})` : 'Cartera pendiente',
+        healthRun.marketMissing > 0 || healthRun.marketFallback > 0 ? 'Mercado parcial' : 'Mercado OK'
+    ];
+
+    if (healthRun.marketFallback > 0) detailParts.push(`${healthRun.marketFallback} fallback`);
+    if (healthRun.marketMissing > 0) detailParts.push(`${healthRun.marketMissing} sin dato`);
+    detailParts.push(healthRun.fxFallback ? 'EUR/USD fallback' : 'EUR/USD OK');
+
+    if (healthRun.marketFallback > 0 || healthRun.marketMissing > 0 || healthRun.fxFallback) {
+        setDataHealth('warning', 'Usando datos estimados', timeText, detailParts.join(' - '));
+    } else {
+        setDataHealth('ok', 'Todo correcto', timeText, detailParts.join(' - '));
+    }
+}
+
+function failHealthRun(message) {
+    const now = new Date();
+    if (lastSuccessfulUpdate) {
+        setDataHealth(
+            'warning',
+            'Mostrando datos anteriores',
+            `Ultima actualizacion correcta: ${formatHealthDate(lastSuccessfulUpdate)}`,
+            message || 'El ultimo intento de actualizacion fallo'
+        );
+    } else {
+        setDataHealth('error', 'Error al actualizar', `Ultimo intento: ${formatHealthDate(now)}`, message || 'No se pudo cargar la cartera');
+    }
+}
+
+function refreshStaleHealthState() {
+    if (!lastSuccessfulUpdate || !healthRun) return;
+    const isStale = Date.now() - lastSuccessfulUpdate.getTime() > STALE_DATA_MS;
+    if (!isStale) return;
+
+    setDataHealth(
+        'warning',
+        'Datos antiguos',
+        `Ultima actualizacion correcta: ${formatHealthDate(lastSuccessfulUpdate)}`,
+        'Han pasado mas de 60 min desde la ultima actualizacion correcta'
+    );
+}
 
 async function fetchYahooChart(ticker, interval = '1d', range = '6mo') {
     const cacheKey = `${ticker}|${interval}|${range}`;
@@ -70,14 +158,21 @@ async function fetchYahooChart(ticker, interval = '1d', range = '6mo') {
 }
 
 async function getUsdEurRate() {
-    if (usdEurRateCache) return usdEurRateCache;
+    if (usdEurRateCache) {
+        if (healthRun && usdEurRateIsFallback) healthRun.fxFallback = true;
+        return usdEurRateCache;
+    }
     try {
         const data = await fetchYahooChart('EURUSD=X', '1d', '5d');
         const eurUsd = data.chart.result[0].meta.regularMarketPrice;
         usdEurRateCache = eurUsd ? 1 / eurUsd : 0.92;
+        usdEurRateIsFallback = !eurUsd;
+        if (healthRun && usdEurRateIsFallback) healthRun.fxFallback = true;
     } catch (e) {
         console.warn('No se pudo obtener EURUSD=X; usando fallback FX.', e);
         usdEurRateCache = 0.92;
+        usdEurRateIsFallback = true;
+        if (healthRun) healthRun.fxFallback = true;
     }
     return usdEurRateCache;
 }
@@ -230,6 +325,7 @@ async function fetchData(ticker, fallback = null) {
         const price = data.chart.result[0].meta.regularMarketPrice;
 
         const weekly = quotes.filter((_, i) => i % 5 === 0);
+        if (healthRun) healthRun.marketLive++;
 
         return {
             price,
@@ -243,13 +339,17 @@ async function fetchData(ticker, fallback = null) {
 
     } catch (error) {
         console.warn(`No se pudo obtener Yahoo para ${ticker}; usando fallback de Sheet si existe.`, error);
-        if (!fallback) return null;
+        if (!fallback) {
+            if (healthRun) healthRun.marketMissing++;
+            return null;
+        }
 
         const entrada = parseFloat(fallback.entrada) || 0;
         const maximo = parseFloat(fallback.maximoAlcanzado) || entrada || 0;
         const price = maximo || entrada;
         const min6M = Math.min(entrada || price, maximo || price, price || 0);
         const max6M = Math.max(entrada || price, maximo || price, price || 0);
+        if (healthRun) healthRun.marketFallback++;
 
         return {
             price,
@@ -343,6 +443,7 @@ function updateRiskCards(posiciones, sectorExposure, currencyExposure, usdEurRat
 }
 
 async function loadDashboard() {
+    startHealthRun();
     const btn = document.getElementById('refresh-btn');
     btn.disabled = true;
     
@@ -359,6 +460,10 @@ async function loadDashboard() {
         const usdEurRate = await getUsdEurRate();
         const response = await fetch(API_SHEET_URL);
         const miCartera = await response.json();
+        if (healthRun) {
+            healthRun.portfolioOk = true;
+            healthRun.portfolioCount = Array.isArray(miCartera) ? miCartera.length : 0;
+        }
 
         // --- PASO 1: PRE-CÁLCULO DEL VALOR TOTAL ---
         const posicionesProcesadas = [];
@@ -604,8 +709,10 @@ async function loadDashboard() {
         updateRiskCards(posicionesProcesadas, sectorExposure, currencyExposure, usdEurRate);
 
         await loadWatchlist();
+        finishHealthRun();
     } catch (error) {
         console.error("Error crítico en loadDashboard:", error);
+        failHealthRun('No se pudo cargar la cartera');
         body.innerHTML = '<tr><td colspan="10" style="color:var(--red)">Error al sincronizar datos financieros.</td></tr>';
     } finally {
         btn.disabled = false;
@@ -653,3 +760,5 @@ document.getElementById('refresh-btn').onclick = () => {
 loadDashboard().then(() => {
     startTimer();
 });
+
+setInterval(refreshStaleHealthState, 60000);
