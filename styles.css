@@ -19,6 +19,19 @@
         .refresh-btn:disabled { opacity: 0.5; cursor: not-allowed; }
         .secondary-btn { background: transparent; border: 1px solid var(--border); color: var(--muted); padding: 8px 12px; border-radius: 6px; cursor: pointer; font-family: var(--mono); font-size: 10px; margin-left: 8px; }
         .secondary-btn:hover { color: var(--text); border-color: var(--accent); }
+        .header-right { text-align: right; }
+        .data-health { color: var(--muted); font-size: 10px; margin-bottom: 8px; }
+        .data-health-main { display: flex; align-items: center; justify-content: flex-end; gap: 6px; color: var(--text); font-weight: 600; }
+        .data-health-dot { width: 7px; height: 7px; border-radius: 999px; background: var(--muted); display: inline-block; }
+        .data-health-time, .data-health-detail { margin-top: 3px; }
+        .data-health-ok .data-health-dot { background: var(--green); }
+        .data-health-ok .data-health-main { color: var(--green); }
+        .data-health-warning .data-health-dot { background: var(--amber); }
+        .data-health-warning .data-health-main { color: var(--amber); }
+        .data-health-error .data-health-dot { background: var(--red); }
+        .data-health-error .data-health-main { color: var(--red); }
+        .data-health-loading .data-health-dot { background: var(--accent); }
+        .data-health-loading .data-health-main { color: var(--accent); }
         .risk-note { color: var(--muted); font-size: 10px; margin-top: 6px; }
 
         .summary-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(180px, 1fr)); gap: 16px; margin-bottom: 40px; }
