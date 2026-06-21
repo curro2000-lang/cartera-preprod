@@ -120,6 +120,22 @@ function refreshStaleHealthState() {
     );
 }
 
+function amountEURToPositionCurrency(valueEUR, moneda, usdEurRate) {
+    const numeric = Number(valueEUR) || 0;
+    return moneda === '$' && usdEurRate ? numeric / usdEurRate : numeric;
+}
+
+function formatPositionCurrency(valueEUR, moneda, usdEurRate) {
+    const currency = moneda || '€';
+    const nativeValue = amountEURToPositionCurrency(valueEUR, currency, usdEurRate);
+    const formatted = nativeValue.toLocaleString('es-ES', {
+        minimumFractionDigits: 2,
+        maximumFractionDigits: 2
+    });
+
+    return currency === '$' ? `$${formatted}` : `${formatted}${currency}`;
+}
+
 async function fetchYahooChart(ticker, interval = '1d', range = '6mo') {
     const cacheKey = `${ticker}|${interval}|${range}`;
     if (marketCache.has(cacheKey)) return marketCache.get(cacheKey);
@@ -200,6 +216,8 @@ window.solicitarExplicacionIA = async function(ticker, d, intentos = 0) {
         // Captura la fecha real de tu ordenador/navegador
         const opcionesFecha = { year: 'numeric', month: 'long', day: 'numeric' };
         const fechaHoy = new Date().toLocaleDateString('es-ES', opcionesFecha);
+        const sugerenciaTexto = d.sugerenciaTexto || `${d.sugerencia}€`;
+        const sugerenciaMitadTexto = d.sugerenciaMitadTexto || `${d.sugerencia / 2}€`;
         let promptFinal = "";
 
         if (d.esCartera) {
@@ -221,7 +239,7 @@ window.solicitarExplicacionIA = async function(ticker, d, intentos = 0) {
         - Peso Proyectado POST-COMPRA (Dato JS): ${d.pesoPost}%
         - Margen de Tolerancia Admitido: 1%
         - Rol Estratégico: ${d.rol}
-        - Aportación Base Propuesta: ${d.sugerencia}€
+        - Aportación Base Propuesta: ${sugerenciaTexto}
         - Valor Total Cartera Global: ${d.totalCartera}€
 
         INSTRUCCIONES DE FORMATO OBLIGATORIAS:
@@ -244,11 +262,11 @@ window.solicitarExplicacionIA = async function(ticker, d, intentos = 0) {
            
            - REGLA 4.1 (Sobreponderación previa): Si (Peso Actual - Peso Objetivo) > 1% -> SEÑAL: MANTENER EN OBSERVACIÓN. Argumenta que el riesgo de concentración patrimonial es excesivo y no recomienda aportar capital nuevo.
            
-           - REGLA 4.2 (Margen de Tolerancia Actual): Si (Peso Actual - Peso Objetivo) está entre 0.1% y 1% -> SEÑAL: APORTE REDUCIDO A REVISAR. Recomienda mitigar el riesgo valorando solo la mitad de la aportación (${d.sugerencia / 2}€) para aprovechar el soporte sin desviar el peso ideal.
+           - REGLA 4.2 (Margen de Tolerancia Actual): Si (Peso Actual - Peso Objetivo) está entre 0.1% y 1% -> SEÑAL: APORTE REDUCIDO A REVISAR. Recomienda mitigar el riesgo valorando solo la mitad de la aportación (${sugerenciaMitadTexto}) para aprovechar el soporte sin desviar el peso ideal.
            
-           - REGLA 4.3 (Exceso Proyectado / Pasarse de frenada): Si Peso Actual <= Peso Objetivo, pero el Peso Proyectado (${d.pesoPost}%) supera al Objetivo en más de un 1% -> SEÑAL: APORTE AJUSTADO A REVISAR. Advierte explícitamente que la aportación completa descuadrará la cartera debido a su tamaño actual (${d.totalCartera}€). Sugiere reducir el capital a la mitad (${d.sugerencia / 2}€) o a un importe inferior exacto para optimizar el encaje.
+           - REGLA 4.3 (Exceso Proyectado / Pasarse de frenada): Si Peso Actual <= Peso Objetivo, pero el Peso Proyectado (${d.pesoPost}%) supera al Objetivo en más de un 1% -> SEÑAL: APORTE AJUSTADO A REVISAR. Advierte explícitamente que la aportación completa descuadrará la cartera debido a su tamaño actual (${d.totalCartera}€). Sugiere reducir el capital a la mitad (${sugerenciaMitadTexto}) o a un importe inferior exacto para optimizar el encaje.
            
-           - REGLA 4.4 (Aporte candidato óptimo): Si Peso Actual <= Peso Objetivo y el Peso Proyectado (${d.pesoPost}%) se mantiene dentro de los márgenes tolerados -> SEÑAL: CANDIDATO A REVISAR. Valida que los ${d.sugerencia}€ completos encajan con el peso, justificando si la Fase Estratégica (${d.fase}) ofrece un timing razonable para promediar.
+           - REGLA 4.4 (Aporte candidato óptimo): Si Peso Actual <= Peso Objetivo y el Peso Proyectado (${d.pesoPost}%) se mantiene dentro de los márgenes tolerados -> SEÑAL: CANDIDATO A REVISAR. Valida que los ${sugerenciaTexto} completos encajan con el peso, justificando si la Fase Estratégica (${d.fase}) ofrece un timing razonable para promediar.
         
         4. CONCLUSIÓN WATCH-ONLY:
            - Concluye con un veredicto de revisión, no como orden operativa. Especifica la acción sugerida y el importe máximo a considerar, dejando claro que requiere validación humana antes de operar.
@@ -260,12 +278,12 @@ window.solicitarExplicacionIA = async function(ticker, d, intentos = 0) {
             - Soporte 6M: ${d.min6M}
             - RSI Diario: ${d.rsiD} | RSI Semanal: ${d.rsiW}
             - Peso Objetivo: ${d.pesoSugerido}%
-            - Sugerencia: ${d.sugerencia}€
+            - Sugerencia: ${sugerenciaTexto}
             
             TAREA: Ignora pesos de cartera. Analiza puramente el MARKET TIMING. 
             ¿Está el precio cerca del suelo de 6 meses (${d.min6M})? 
             ¿El RSI indica que el cuchillo ha dejado de caer? 
-            Recomienda si merece entrar en revisión para abrir posición con hasta ${d.sugerencia}€, sin formularlo como orden de compra.
+            Recomienda si merece entrar en revisión para abrir posición con hasta ${sugerenciaTexto}, sin formularlo como orden de compra.
             
             Respuesta técnica y de extensión libre. Desarrolla tus argumentos al máximo sin limitaciones de líneas.`;
         }
@@ -602,11 +620,13 @@ async function loadDashboard() {
                 }
             }
             importeSugerido = parseFloat(importeSugerido.toFixed(2)) || 0;
+            const importeSugeridoTexto = formatPositionCurrency(importeSugerido, pos.moneda, usdEurRate);
+            const importeSugeridoMitadTexto = formatPositionCurrency(importeSugerido / 2, pos.moneda, usdEurRate);
 
             // Acoplamos el dinero sugerido directamente al texto del Badge principal si procede
             let badgeTextFinal = badgeText;
             if (importeSugerido > 0 && (badgeId === 2 || badgeId === 3 || badgeId === "growth-buy" || badgeId === "support-buy")) {
-                badgeTextFinal = `${badgeText} [+${importeSugerido.toLocaleString('es-ES', {minimumFractionDigits: 2})}€]`;
+                badgeTextFinal = `${badgeText} [+${importeSugeridoTexto}]`;
             }
 
             // 5. MAQUETACIÓN DE LA NUEVA CELDA MULTI-INFORME DE FASE Y SEÑAL
@@ -662,7 +682,9 @@ async function loadDashboard() {
                     fase: '${badgeText} (${faseOriginalText})', 
                     sector: '${pos.sector || "N/A"}',
                     esCartera: true, 
-                    sugerencia: ${importeSugerido}
+                    sugerencia: ${amountEURToPositionCurrency(importeSugerido, pos.moneda, usdEurRate)},
+                    sugerenciaTexto: '${importeSugeridoTexto}',
+                    sugerenciaMitadTexto: '${importeSugeridoMitadTexto}'
                 })">
                     <td>
                         <div class="ticker">${pos.tickerApp}</div>
