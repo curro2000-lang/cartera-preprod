@@ -1,4 +1,3 @@
-import { GoogleGenerativeAI } from "@google/generative-ai";
 import {
     UNIDAD_BASE,
     API_SHEET_URL,
@@ -8,24 +7,6 @@ import {
     largestExposure,
     evaluateReviewBlockers
 } from "./strategy.js";
-
-let API_KEY = localStorage.getItem('GEMINI_KEY') || '';
-let genAI = API_KEY ? new GoogleGenerativeAI(API_KEY) : null;
-
-document.getElementById('configure-ai-btn')?.addEventListener('click', () => {
-    const key = prompt('Introduce tu API Key de Gemini para activar informes IA en este navegador. Déjalo vacío para desactivar.');
-    if (key && key.trim()) {
-        API_KEY = key.trim();
-        localStorage.setItem('GEMINI_KEY', API_KEY);
-        genAI = new GoogleGenerativeAI(API_KEY);
-        alert('IA activada en este navegador.');
-    } else {
-        API_KEY = '';
-        genAI = null;
-        localStorage.removeItem('GEMINI_KEY');
-        alert('IA desactivada en este navegador.');
-    }
-});
 
 // Recuperar máximos históricos guardados
 let persistence = JSON.parse(localStorage.getItem('CARTERA_MAXIMOS')) || {};
@@ -194,102 +175,25 @@ async function getUsdEurRate() {
 }
 
 window.solicitarExplicacionIA = async function(ticker, d, intentos = 0) {
-    // 1. Buscamos el contenedor global único que has puesto fuera de la tabla
     const el = document.getElementById("contenedor-informe-global");
     if (!el) return;
 
-    // Hacemos visible el contenedor por si estaba oculto al cargar la página
     el.style.display = "block";
-    if (!genAI) {
-        el.innerHTML = `<p class="ia-report-p">IA no configurada. El dashboard funciona igualmente; pulsa <strong>IA opcional</strong> si quieres activar informes generados en este navegador.</p>`;
-        el.scrollIntoView({ behavior: 'smooth' });
-        return;
-    }
     el.innerHTML = `<p class="ia-report-p">Generando informe estratégico extendido para <strong>${ticker}</strong> con Gemini...</p>`;
-
-    // Hacemos un scroll suave automático hacia el contenedor para que el usuario vea que está cargando
     el.scrollIntoView({ behavior: 'smooth' });
 
     try {
-        // Usamos el modelo oficial existente
-        const model = genAI.getGenerativeModel({ model: "gemini-2.5-flash-lite" });
-        // Captura la fecha real de tu ordenador/navegador
-        const opcionesFecha = { year: 'numeric', month: 'long', day: 'numeric' };
-        const fechaHoy = new Date().toLocaleDateString('es-ES', opcionesFecha);
-        const sugerenciaTexto = d.sugerenciaTexto || `${d.sugerencia}€`;
-        const sugerenciaMitadTexto = d.sugerenciaMitadTexto || `${d.sugerencia / 2}€`;
-        let promptFinal = "";
-
-        if (d.esCartera) {
-            promptFinal = `Actúa como un gestor de patrimonio y analista técnico senior experto en la estrategia "Buy the Dip". Realiza un informe detallado, extenso y profundamente razonado para ${ticker}.
-        
-        DATOS TÉCNICOS Y PATRIMONIALES:
-        - Fecha de hoy (Obligatoria para el informe): ${fechaHoy}
-        - Precio Actual: ${d.actual}
-        - PER Actual (Ratio de Valoración): ${d.per}
-        - Soporte Técnico (Mínimo 6M): ${d.min6M}
-        - Precio de Entrada (Media): ${d.entrada}
-        - Resistencia (Máximo): ${d.max}
-        - RSI Diario: ${d.rsiD} | RSI Semanal: ${d.rsiW}
-        - Retroceso desde Máximo: ${d.dip}%
-        - Fase Estratégica: ${d.fase}
-        - Es Cartera: ${d.esCartera} 
-        - Peso Actual: ${d.pesoActual}%
-        - Peso Objetivo (Ideal): ${d.pesoSugerido}%
-        - Peso Proyectado POST-COMPRA (Dato JS): ${d.pesoPost}%
-        - Margen de Tolerancia Admitido: 1%
-        - Rol Estratégico: ${d.rol}
-        - Aportación Base Propuesta: ${sugerenciaTexto}
-        - Valor Total Cartera Global: ${d.totalCartera}€
-
-        INSTRUCCIONES DE FORMATO OBLIGATORIAS:
-        - Si incluyes una fecha en el encabezado o cuerpo del informe, utiliza única y exclusivamente la fecha provista en los datos: ${fechaHoy}. Está prohibido usar el año 2023 o cualquier otra fecha pasada.
-        - Usa siempre la coma (,) para los decimales y el punto (.) para los miles en las cifras monetarias finales.
-        - Estructura el informe usando estrictamente los títulos numerados "1. EVALUACIÓN...", "2. MOMENTUM...", "3. ASIGNACIÓN..." y "4. CONCLUSIÓN...". No alteres esta nomenclatura.
-
-        INSTRUCCIONES DE ANÁLISIS EXTENDIDO (Desarrolla cada sección en párrafos separados y profundos):
-        
-        1. EVALUACIÓN DE SOPORTE Y CONTEXTO TÉCNICO: 
-           - Compara detalladamente el Precio Actual con el Soporte Técnico (${d.min6M}) para dictaminar si es una "ZONA DE SUELO" robusta o hay riesgo de capitulación.
-           - Cruza la situación con tu Precio de Entrada medio (${d.entrada}) y evalúa la magnitud del ajuste en base al retroceso del ${d.dip}% desde su Máximo (${d.max}).
-           - CRÍTICO: Utiliza el PER Actual (${d.per}) para evaluar si la caída del precio representa un abaratamiento real de las acciones o si es una trampa de valor (si el PER es inusualmente alto para su sector).
-        
-        2. MOMENTUM Y REGLA TEMPORAL (RSI):
-           - Realiza un análisis cruzado del RSI Diario con el RSI Semanal. Determina si la estructura alcista estructural de fondo (Semanal) sigue saludable y justifica absorber la volatilidad reflejada en el gráfico diario.
-        
-        3. ASIGNACIÓN, ROL E IMPORTE A REVISAR (FILTRO DE RIESGO POST-APORTE):
-           Contextualiza la posición con su Rol "${d.rol}" frente al entorno macro de tipos. Evalúa el impacto de un posible aporte comparando el Peso Objetivo (${d.pesoSugerido}%) con el Peso Actual (${d.pesoActual}%) y el Peso Proyectado post-aporte (${d.pesoPost}%). Emite una recomendación watch-only aplicando estrictamente esta escala de reglas exclusivas:
-           
-           - REGLA 4.1 (Sobreponderación previa): Si (Peso Actual - Peso Objetivo) > 1% -> SEÑAL: MANTENER EN OBSERVACIÓN. Argumenta que el riesgo de concentración patrimonial es excesivo y no recomienda aportar capital nuevo.
-           
-           - REGLA 4.2 (Margen de Tolerancia Actual): Si (Peso Actual - Peso Objetivo) está entre 0.1% y 1% -> SEÑAL: APORTE REDUCIDO A REVISAR. Recomienda mitigar el riesgo valorando solo la mitad de la aportación (${sugerenciaMitadTexto}) para aprovechar el soporte sin desviar el peso ideal.
-           
-           - REGLA 4.3 (Exceso Proyectado / Pasarse de frenada): Si Peso Actual <= Peso Objetivo, pero el Peso Proyectado (${d.pesoPost}%) supera al Objetivo en más de un 1% -> SEÑAL: APORTE AJUSTADO A REVISAR. Advierte explícitamente que la aportación completa descuadrará la cartera debido a su tamaño actual (${d.totalCartera}€). Sugiere reducir el capital a la mitad (${sugerenciaMitadTexto}) o a un importe inferior exacto para optimizar el encaje.
-           
-           - REGLA 4.4 (Aporte candidato óptimo): Si Peso Actual <= Peso Objetivo y el Peso Proyectado (${d.pesoPost}%) se mantiene dentro de los márgenes tolerados -> SEÑAL: CANDIDATO A REVISAR. Valida que los ${sugerenciaTexto} completos encajan con el peso, justificando si la Fase Estratégica (${d.fase}) ofrece un timing razonable para promediar.
-        
-        4. CONCLUSIÓN WATCH-ONLY:
-           - Concluye con un veredicto de revisión, no como orden operativa. Especifica la acción sugerida y el importe máximo a considerar, dejando claro que requiere validación humana antes de operar.
-        
-        Redacta un informe ejecutivo formal, puramente técnico y de extensión libre. Desarrolla tus argumentos al máximo sin limitaciones de líneas.`;
-        } else {
-            promptFinal = `Analiza la oportunidad en WATCHLIST para ${ticker}.
-            - Precio Actual: ${d.actual}
-            - Soporte 6M: ${d.min6M}
-            - RSI Diario: ${d.rsiD} | RSI Semanal: ${d.rsiW}
-            - Peso Objetivo: ${d.pesoSugerido}%
-            - Sugerencia: ${sugerenciaTexto}
-            
-            TAREA: Ignora pesos de cartera. Analiza puramente el MARKET TIMING. 
-            ¿Está el precio cerca del suelo de 6 meses (${d.min6M})? 
-            ¿El RSI indica que el cuchillo ha dejado de caer? 
-            Recomienda si merece entrar en revisión para abrir posición con hasta ${sugerenciaTexto}, sin formularlo como orden de compra.
-            
-            Respuesta técnica y de extensión libre. Desarrolla tus argumentos al máximo sin limitaciones de líneas.`;
+        const res = await fetch(API_SHEET_URL, {
+            method: 'POST',
+            headers: { 'Content-Type': 'text/plain;charset=utf-8' },
+            body: JSON.stringify({ ticker, ...d })
+        });
+        const result = await res.json();
+        if (!res.ok || !result.ok) {
+            throw new Error(result.error || `Proxy IA ${res.status}`);
         }
 
-        const result = await model.generateContent(promptFinal);
-        let textoIA = result.response.text();
+        let textoIA = result.text || '';
 
         // Formateamos el Markdown de la IA a HTML limpio
         textoIA = textoIA
