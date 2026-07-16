@@ -1,5 +1,15 @@
 export const UNIDAD_BASE = 200;
 
+export const INTRINSIC_DCA_CONFIG = {
+  enabled: false,
+  simulationMode: false,
+  weight: 0,
+  minMultiplier: 0.75,
+  maxMultiplier: 1.25,
+  minConfidence: 0.6,
+  baseScenario: 'base'
+};
+
 export const API_SHEET_URL = "https://script.google.com/macros/s/AKfycbyHgwnLEPaClzySrV3-7PNJVi5xlcVpksuzeJneUSBLDniMCXrD8ePIWlJmHT49uvmr/exec";
 
 export const WATCHLIST = [

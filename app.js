@@ -7,6 +7,14 @@ import {
     largestExposure,
     evaluateReviewBlockers
 } from "./strategy.js";
+import { intrinsicValueByTicker } from "./intrinsic-data.js";
+import {
+    INTRINSIC_SCENARIOS,
+    calculateIntrinsicValue,
+    calculateMarginOfSafety,
+    calculatePeterLynchSignal,
+    calculateReverseDcfRequiredGrowth
+} from "./intrinsic-value.js";
 
 // Recuperar máximos históricos guardados
 let persistence = JSON.parse(localStorage.getItem('CARTERA_MAXIMOS')) || {};
@@ -115,6 +123,185 @@ function formatPositionCurrency(valueEUR, moneda, usdEurRate) {
     });
 
     return currency === '$' ? `$${formatted}` : `${formatted}${currency}`;
+}
+
+function formatIntrinsicCurrency(value, currency) {
+    if (!Number.isFinite(Number(value))) return 'no disponible';
+    const symbol = currency === 'USD' ? '$' : '€';
+    const formatted = Number(value).toLocaleString('es-ES', {
+        minimumFractionDigits: 2,
+        maximumFractionDigits: 2
+    });
+    return currency === 'USD' ? `${symbol}${formatted}` : `${formatted}${symbol}`;
+}
+
+function positionCurrencyCode(pos) {
+    return pos.moneda === '$' ? 'USD' : 'EUR';
+}
+
+function intrinsicValueInPositionCurrency(value, intrinsicCurrency, pos, usdEurRate) {
+    const numeric = Number(value);
+    const displayCurrency = positionCurrencyCode(pos);
+    if (!Number.isFinite(numeric) || !intrinsicCurrency || intrinsicCurrency === displayCurrency) return numeric;
+    if (intrinsicCurrency === 'USD' && displayCurrency === 'EUR' && usdEurRate) return numeric * usdEurRate;
+    if (intrinsicCurrency === 'EUR' && displayCurrency === 'USD' && usdEurRate) return numeric / usdEurRate;
+    return numeric;
+}
+
+function formatPercent(value) {
+    if (!Number.isFinite(Number(value))) return 'no disponible';
+    return `${(Number(value) * 100).toFixed(1)}%`;
+}
+
+function averageGrowthRate(scenario) {
+    const rates = scenario?.growthRates || [];
+    const values = rates.map(rate => Number(rate.value)).filter(value => Number.isFinite(value));
+    if (!values.length) return null;
+    return values.reduce((sum, value) => sum + value, 0) / values.length;
+}
+
+function marginSignal(margin) {
+    if (!Number.isFinite(Number(margin))) return 'no disponible';
+    if (margin >= 0.25) return 'Margen amplio';
+    if (margin >= 0.1) return 'Margen razonable';
+    if (margin >= -0.1) return 'Precio ajustado';
+    if (margin >= -0.35) return 'Algo exigente';
+    return 'Muy exigente';
+}
+
+function reverseDcfSignal(requiredGrowth) {
+    if (!Number.isFinite(Number(requiredGrowth))) return 'no disponible';
+    if (requiredGrowth <= 0.05) return 'Facil de justificar';
+    if (requiredGrowth <= 0.1) return 'Razonable';
+    if (requiredGrowth <= 0.18) return 'Exigente';
+    if (requiredGrowth <= 0.3) return 'Muy exigente';
+    return 'Extremo';
+}
+
+function scenarioLabel(name) {
+    return {
+        conservative: 'Conservador',
+        base: 'Base',
+        optimistic: 'Optimista'
+    }[name] || name;
+}
+
+function fieldSummary(label, field) {
+    if (!field) return `<div>${label}: no disponible</div>`;
+    const source = field.source || 'fuente no disponible';
+    const confidence = Number.isFinite(Number(field.confidence)) ? `${(Number(field.confidence) * 100).toFixed(0)}%` : 'no disponible';
+    const value = field.value === undefined || field.value === null ? 'no disponible' : `${field.value}${field.unit ? ` ${field.unit}` : ''}`;
+    return `<div>${label}: ${value} - ${source} - conf. ${confidence}</div>`;
+}
+
+function priceInIntrinsicCurrency(pos, intrinsicResult, usdEurRate) {
+    const intrinsicCurrency = intrinsicResult.currency || intrinsicResult.base?.currency;
+    const positionCurrency = positionCurrencyCode(pos);
+    const price = Number(pos.price);
+    if (!Number.isFinite(price) || !intrinsicCurrency || intrinsicCurrency === positionCurrency) return price;
+    if (positionCurrency === 'EUR' && intrinsicCurrency === 'USD' && usdEurRate) return price / usdEurRate;
+    if (positionCurrency === 'USD' && intrinsicCurrency === 'EUR' && usdEurRate) return price * usdEurRate;
+    return price;
+}
+
+function renderIntrinsicCell(pos, intrinsicResult, usdEurRate) {
+    const base = intrinsicResult.base;
+    const comparablePrice = priceInIntrinsicCurrency(pos, intrinsicResult, usdEurRate);
+    const displayCurrency = positionCurrencyCode(pos);
+    const intrinsicCurrency = intrinsicResult.currency || base?.currency;
+    const hasFxConversion = Boolean(intrinsicCurrency && intrinsicCurrency !== displayCurrency);
+    const margin = base ? calculateMarginOfSafety(comparablePrice, base.valuePerShare) : null;
+    const confidenceText = intrinsicResult.available ? formatPercent(intrinsicResult.confidence) : 'no disponible';
+    const sourceData = intrinsicValueByTicker[pos.tickerApp];
+    const statementUpdatedAtText = sourceData?.statementUpdatedAt || intrinsicResult.updatedAt || 'no disponible';
+    const modelUpdatedAtText = sourceData?.modelUpdatedAt || 'no disponible';
+    const reverseDcf = sourceData?.scenarios?.base
+        ? calculateReverseDcfRequiredGrowth(comparablePrice, sourceData.scenarios.base, sourceData.currency)
+        : { available: false };
+    const lynchGrowth = averageGrowthRate(sourceData?.scenarios?.base);
+    const lynchSignal = calculatePeterLynchSignal({
+        pe: pos.per,
+        growthRate: lynchGrowth,
+        dividendYield: 0
+    });
+    const reverseDcfText = reverseDcf.available
+        ? `${reverseDcf.bounded ? '>' : ''}${formatPercent(reverseDcf.requiredGrowth)} CAGR FCF - ${reverseDcfSignal(reverseDcf.requiredGrowth)}`
+        : 'no disponible';
+    const lynchText = lynchSignal.available
+        ? `${lynchSignal.ratio.toFixed(1)}x - ${lynchSignal.label}`
+        : 'no disponible';
+    const marginText = margin === null ? 'no disponible' : `${formatPercent(margin)} - ${marginSignal(margin)}`;
+
+    if (!intrinsicResult.available) {
+        return `
+            <div class="intrinsic-cell">
+                <div class="intrinsic-price">Precio: ${pos.price.toFixed(2)}${pos.moneda || ''}</div>
+                <div class="intrinsic-unavailable">Valor intrinseco: no disponible</div>
+                <div class="intrinsic-meta">Confianza: no disponible</div>
+                <details class="intrinsic-details" onclick="event.stopPropagation()">
+                    <summary>Supuestos</summary>
+                    <div>No hay datos suficientes para calcular un DCF.</div>
+                </details>
+            </div>
+        `;
+    }
+
+    const scenarioRows = INTRINSIC_SCENARIOS.map(name => {
+        const scenario = intrinsicResult.scenarios[name];
+        const value = scenario?.available
+            ? formatIntrinsicCurrency(
+                intrinsicValueInPositionCurrency(scenario.valuePerShare, scenario.currency, pos, usdEurRate),
+                displayCurrency
+            )
+            : 'no disponible';
+        return `<div><span>${scenarioLabel(name)}</span><strong>${value}</strong></div>`;
+    }).join('');
+
+    const fxNote = hasFxConversion
+        ? `<div class="intrinsic-meta">DCF original: ${intrinsicCurrency}; mostrado en ${displayCurrency} con FX USD/EUR ${usdEurRate.toFixed(3)}</div>`
+        : '';
+
+    const assumptionsRows = INTRINSIC_SCENARIOS.map(name => {
+        const scenario = sourceData?.scenarios?.[name];
+        if (!scenario) return `<div class="intrinsic-assumption-block"><b>${scenarioLabel(name)}</b><div>no disponible</div></div>`;
+        return `
+            <div class="intrinsic-assumption-block">
+                <b>${scenarioLabel(name)}</b>
+                ${fieldSummary('FCF normalizado', scenario.normalizedFcf)}
+                ${fieldSummary('Caja', scenario.cash)}
+                ${fieldSummary('Deuda', scenario.debt)}
+                ${fieldSummary('Acciones diluidas', scenario.dilutedShares)}
+                ${fieldSummary('WACC', scenario.wacc)}
+                ${fieldSummary('Crecimiento terminal', scenario.terminalGrowth)}
+                <div>Proyecciones: ${Array.isArray(scenario.growthRates) ? scenario.growthRates.map(g => formatPercent(g.value)).join(' / ') : 'no disponible'}</div>
+                ${scenario.normalizationNote ? `<div>Normalizacion: ${scenario.normalizationNote}</div>` : ''}
+            </div>
+        `;
+    }).join('');
+
+    return `
+        <div class="intrinsic-cell">
+            <div class="intrinsic-price">Precio: ${pos.price.toFixed(2)}${pos.moneda || ''}</div>
+            <div class="intrinsic-scenarios">${scenarioRows}</div>
+            ${fxNote}
+            <div class="intrinsic-meta">Margen base: ${marginText}</div>
+            <div class="intrinsic-meta">Reverse DCF: ${reverseDcfText}</div>
+            <div class="intrinsic-meta">Lynch PEG: ${lynchText}</div>
+            <div class="intrinsic-meta">Confianza: ${confidenceText}</div>
+            <div class="intrinsic-meta">Dato contable: ${statementUpdatedAtText}</div>
+            <div class="intrinsic-meta">Modelo: ${modelUpdatedAtText}</div>
+            <details class="intrinsic-details" onclick="event.stopPropagation()">
+                <summary>Supuestos</summary>
+                <div class="intrinsic-assumption-block">
+                    <b>Lecturas rapidas</b>
+                    <div>Margen base: descuento o prima frente al DCF base. Positivo es margen; negativo indica precio exigente.</div>
+                    <div>Reverse DCF: crecimiento anual de FCF a 5 anos que exige el precio actual, manteniendo WACC y crecimiento terminal del escenario base.</div>
+                    <div>Lynch PEG: PER dividido entre crecimiento medio esperado. Menor que 1 atractivo; 1-1,5 razonable; 1,5-2 exigente; mayor que 2 muy exigente. No incluye dividendo por falta de dato.</div>
+                </div>
+                ${assumptionsRows}
+            </details>
+        </div>
+    `;
 }
 
 async function fetchYahooChart(ticker, interval = '1d', range = '6mo') {
@@ -370,7 +557,7 @@ async function loadDashboard() {
     btn.disabled = true;
     
     const body = document.getElementById('portfolio-body');
-    body.innerHTML = '<tr><td colspan="10">Calculando pesos de cartera...</td></tr>';
+    body.innerHTML = '<tr><td colspan="11">Calculando pesos de cartera...</td></tr>';
 
     let totalI = 0, totalV = 0, dipsActivos = 0;
     const sectorExposure = {};
@@ -427,6 +614,8 @@ async function loadDashboard() {
             const pesoActual = (pos.valorActualCalculado / totalV * 100) || 0;
             const desviacion = (pesoActual - pesoSugerido).toFixed(1);
             const sectorKey = pos.sector || 'Sin sector';
+            const intrinsicResult = calculateIntrinsicValue(intrinsicValueByTicker[pos.tickerApp]);
+            const intrinsicCellHTML = renderIntrinsicCell(pos, intrinsicResult, usdEurRate);
 
             let colorDesviacion = desviacion < 0 ? 'var(--green)' : 'var(--amber)';
             if (Math.abs(desviacion) < 1) colorDesviacion = 'var(--muted)'; 
@@ -540,7 +729,6 @@ async function loadDashboard() {
                 .slice(0, 2)
                 .map(note => `<div style="font-size: 0.68rem; color: var(--muted); padding-left: 4px;">• ${note}</div>`)
                 .join('');
-
             if (badgeId === "growth-buy" || badgeId === "support-buy" || badgeId === "excess-hold" || badgeId === "blocked-review") {
                 celdaFaseHTML = `
                     <div style="margin-bottom: 3px;"><span class="fase-badge fase-${badgeId}">${badgeTextFinal}</span></div>
@@ -608,6 +796,7 @@ async function loadDashboard() {
                     </td>
                    
                     <td class="right"><b>${pos.price.toFixed(2)}</b>${pos.source === 'sheet-fallback' ? '<div style="font-size:9px; color:var(--amber)">fallback</div>' : ''}</td>
+                    <td onclick="event.stopPropagation()" onkeydown="event.stopPropagation()">${intrinsicCellHTML}</td>
                     <td class="center">
                         <span style="color: ${colorRSID}">${rsiD.toFixed(0)}</span> 
                         <small style="color: ${colorRSIW}; opacity: 0.8">(${rsiW.toFixed(0)}w)</small>
@@ -639,7 +828,7 @@ async function loadDashboard() {
     } catch (error) {
         console.error("Error crítico en loadDashboard:", error);
         failHealthRun('No se pudo cargar la cartera');
-        body.innerHTML = '<tr><td colspan="10" style="color:var(--red)">Error al sincronizar datos financieros.</td></tr>';
+        body.innerHTML = '<tr><td colspan="11" style="color:var(--red)">Error al sincronizar datos financieros.</td></tr>';
     } finally {
         btn.disabled = false;
     }
