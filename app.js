@@ -153,13 +153,6 @@ function formatPercent(value) {
     return `${(Number(value) * 100).toFixed(1)}%`;
 }
 
-function averageGrowthRate(scenario) {
-    const rates = scenario?.growthRates || [];
-    const values = rates.map(rate => Number(rate.value)).filter(value => Number.isFinite(value));
-    if (!values.length) return null;
-    return values.reduce((sum, value) => sum + value, 0) / values.length;
-}
-
 function marginSignal(margin) {
     if (!Number.isFinite(Number(margin))) return 'no disponible';
     if (margin >= 0.25) return 'Margen amplio';
@@ -190,7 +183,11 @@ function fieldSummary(label, field) {
     if (!field) return `<div>${label}: no disponible</div>`;
     const source = field.source || 'fuente no disponible';
     const confidence = Number.isFinite(Number(field.confidence)) ? `${(Number(field.confidence) * 100).toFixed(0)}%` : 'no disponible';
-    const value = field.value === undefined || field.value === null ? 'no disponible' : `${field.value}${field.unit ? ` ${field.unit}` : ''}`;
+    const value = field.value === undefined || field.value === null
+        ? 'no disponible'
+        : field.unit === 'percent'
+            ? formatPercent(field.value)
+            : `${field.value}${field.unit ? ` ${field.unit}` : ''}`;
     return `<div>${label}: ${value} - ${source} - conf. ${confidence}</div>`;
 }
 
@@ -218,7 +215,7 @@ function renderIntrinsicCell(pos, intrinsicResult, usdEurRate) {
     const reverseDcf = sourceData?.scenarios?.base
         ? calculateReverseDcfRequiredGrowth(comparablePrice, sourceData.scenarios.base, sourceData.currency)
         : { available: false };
-    const lynchGrowth = averageGrowthRate(sourceData?.scenarios?.base);
+    const lynchGrowth = Number(sourceData?.expectedEpsGrowth?.value);
     const lynchSignal = calculatePeterLynchSignal({
         pe: pos.per,
         growthRate: lynchGrowth,
@@ -230,6 +227,7 @@ function renderIntrinsicCell(pos, intrinsicResult, usdEurRate) {
     const lynchText = lynchSignal.available
         ? `${lynchSignal.ratio.toFixed(1)}x - ${lynchSignal.label}`
         : 'no disponible';
+    const lynchGrowthText = Number.isFinite(lynchGrowth) ? formatPercent(lynchGrowth) : 'no disponible';
     const marginText = margin === null ? 'no disponible' : `${formatPercent(margin)} - ${marginSignal(margin)}`;
 
     if (!intrinsicResult.available) {
@@ -286,7 +284,7 @@ function renderIntrinsicCell(pos, intrinsicResult, usdEurRate) {
             ${fxNote}
             <div class="intrinsic-meta">Margen base: ${marginText}</div>
             <div class="intrinsic-meta">Reverse DCF: ${reverseDcfText}</div>
-            <div class="intrinsic-meta">Lynch PEG: ${lynchText}</div>
+            <div class="intrinsic-meta">Lynch PEG BPA: ${lynchText} (${lynchGrowthText} crec. BPA)</div>
             <div class="intrinsic-meta">Confianza: ${confidenceText}</div>
             <div class="intrinsic-meta">Dato contable: ${statementUpdatedAtText}</div>
             <div class="intrinsic-meta">Modelo: ${modelUpdatedAtText}</div>
@@ -296,7 +294,8 @@ function renderIntrinsicCell(pos, intrinsicResult, usdEurRate) {
                     <b>Lecturas rapidas</b>
                     <div>Margen base: descuento o prima frente al DCF base. Positivo es margen; negativo indica precio exigente.</div>
                     <div>Reverse DCF: crecimiento anual de FCF a 5 anos que exige el precio actual, manteniendo WACC y crecimiento terminal del escenario base.</div>
-                    <div>Lynch PEG: PER dividido entre crecimiento medio esperado. Menor que 1 atractivo; 1-1,5 razonable; 1,5-2 exigente; mayor que 2 muy exigente. No incluye dividendo por falta de dato.</div>
+                    <div>Lynch PEG BPA: PER dividido entre la estimacion explicita de crecimiento anual esperado del beneficio por accion. Menor que 1 atractivo; 1-1,5 razonable; 1,5-2 exigente; mayor que 2 muy exigente. No incluye dividendo por falta de dato.</div>
+                    ${fieldSummary('Crecimiento BPA esperado', sourceData?.expectedEpsGrowth)}
                 </div>
                 ${assumptionsRows}
             </details>

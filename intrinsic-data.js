@@ -29,13 +29,14 @@ function makeScenario({ currency, source, fcf, cash, debt, dilutedShares, wacc, 
   };
 }
 
-function makeCompany({ ticker, currency, updatedAt, source, reportedFcf, cash, debt, dilutedShares, scenarios }) {
+function makeCompany({ ticker, currency, updatedAt, source, reportedFcf, cash, debt, dilutedShares, expectedEpsGrowth, scenarios }) {
   return {
     ticker,
     currency,
     statementUpdatedAt: updatedAt,
-    modelUpdatedAt: '2026-07-16',
+    modelUpdatedAt: '2026-07-24',
     updatedAt,
+    expectedEpsGrowth: expectedEpsGrowth === undefined ? null : ratio(expectedEpsGrowth),
     scenarios: {
       conservative: makeScenario({
         currency,
@@ -79,6 +80,7 @@ export const intrinsicValueByTicker = {
     cash: 30242,
     debt: 43151,
     dilutedShares: 7465,
+    expectedEpsGrowth: 0.12,
     scenarios: {
       conservative: { fcf: 78000, wacc: 0.095, terminalGrowth: 0.02, growth: [0.03, 0.03, 0.025, 0.025, 0.02], normalizationNote: 'FCF normalizado ligeramente sobre reportado por capex IA no recurrente en su totalidad.' },
       base: { fcf: 90000, wacc: 0.085, terminalGrowth: 0.025, growth: [0.06, 0.055, 0.05, 0.045, 0.04], normalizationNote: 'FCF normalizado asume que parte del capex IA es inversion de crecimiento, no mantenimiento.' },
@@ -95,6 +97,7 @@ export const intrinsicValueByTicker = {
     cash: 30708,
     debt: 48543,
     dilutedShares: 12230,
+    expectedEpsGrowth: 0.11,
     scenarios: {
       conservative: { fcf: 82000, wacc: 0.095, terminalGrowth: 0.02, growth: [0.02, 0.02, 0.02, 0.02, 0.02], normalizationNote: 'FCF normalizado conservador sobre reportado por capex IA elevado.' },
       base: { fcf: 95000, wacc: 0.085, terminalGrowth: 0.025, growth: [0.05, 0.05, 0.045, 0.04, 0.035], normalizationNote: 'FCF normalizado asume capex de crecimiento parcialmente recuperable.' },
@@ -111,6 +114,7 @@ export const intrinsicValueByTicker = {
     cash: 86810,
     debt: 68836,
     dilutedShares: 10827,
+    expectedEpsGrowth: 0.18,
     scenarios: {
       conservative: { fcf: 30000, wacc: 0.105, terminalGrowth: 0.02, growth: [0.05, 0.05, 0.045, 0.04, 0.035], normalizationNote: 'FCF normalizado prudente; reconoce capex de crecimiento pero no lo elimina completamente.' },
       base: { fcf: 45000, wacc: 0.095, terminalGrowth: 0.025, growth: [0.08, 0.075, 0.065, 0.055, 0.045], normalizationNote: 'FCF normalizado asume que una parte relevante del capex AWS/IA/logistica es inversion de crecimiento.' },
@@ -127,6 +131,7 @@ export const intrinsicValueByTicker = {
     cash: 12773,
     debt: 0,
     dilutedShares: 105.569,
+    expectedEpsGrowth: 0.09,
     scenarios: {
       conservative: { fcf: 3600, wacc: 0.085, terminalGrowth: 0.02, growth: [0.025, 0.025, 0.025, 0.025, 0.02], normalizationNote: 'FCF normalizado por debajo del ajustado para reflejar ciclo de lujo mas moderado.' },
       base: { fcf: 3900, wacc: 0.075, terminalGrowth: 0.025, growth: [0.045, 0.045, 0.04, 0.035, 0.03], normalizationNote: 'FCF cercano al ajustado reportado; asume resiliencia de marca y crecimiento gradual.' },
@@ -143,6 +148,7 @@ export const intrinsicValueByTicker = {
     cash: 4425.6,
     debt: 183.3,
     dilutedShares: 31.613,
+    expectedEpsGrowth: 0.16,
     scenarios: {
       conservative: { fcf: 850, wacc: 0.105, terminalGrowth: 0.02, growth: [0.08, 0.075, 0.065, 0.055, 0.045], normalizationNote: 'FCF conservador; excluye lectura agresiva de caja por fondos de merchants.' },
       base: { fcf: 1000, wacc: 0.095, terminalGrowth: 0.025, growth: [0.13, 0.12, 0.105, 0.09, 0.075], normalizationNote: 'FCF normalizado asume escalabilidad de plataforma y crecimiento rentable.' },
@@ -159,6 +165,7 @@ export const intrinsicValueByTicker = {
     cash: 12916,
     debt: 4390.9,
     dilutedShares: 388.9,
+    expectedEpsGrowth: 0.12,
     scenarios: {
       conservative: { fcf: 11500, wacc: 0.105, terminalGrowth: 0.02, growth: [0.01, 0.02, 0.03, 0.035, 0.035], normalizationNote: 'FCF cercano a reportado; ciclo de semis tratado con prudencia.' },
       base: { fcf: 13500, wacc: 0.095, terminalGrowth: 0.025, growth: [0.04, 0.055, 0.065, 0.06, 0.05], normalizationNote: 'FCF normalizado por fortaleza de backlog y ciclo AI, no por extrapolacion plena.' },
@@ -175,6 +182,7 @@ export const intrinsicValueByTicker = {
     cash: 7563,
     debt: 7942,
     dilutedShares: 1481,
+    expectedEpsGrowth: 0.08,
     scenarios: {
       conservative: { fcf: 2400, wacc: 0.105, terminalGrowth: 0.015, growth: [-0.03, 0, 0.015, 0.02, 0.02], normalizationNote: 'FCF apenas normalizado por reestructuracion todavia incierta.' },
       base: { fcf: 3200, wacc: 0.095, terminalGrowth: 0.02, growth: [0, 0.025, 0.035, 0.04, 0.035], normalizationNote: 'FCF normalizado asume recuperacion parcial de margen y working capital.' },
@@ -191,6 +199,7 @@ export const intrinsicValueByTicker = {
     cash: 774,
     debt: 40698,
     dilutedShares: 716.4,
+    expectedEpsGrowth: 0.07,
     scenarios: {
       conservative: { fcf: 7200, wacc: 0.085, terminalGrowth: 0.015, growth: [0.015, 0.015, 0.02, 0.02, 0.02], normalizationNote: 'FCF practicamente reportado por estabilidad del modelo.' },
       base: { fcf: 7800, wacc: 0.075, terminalGrowth: 0.02, growth: [0.035, 0.035, 0.035, 0.03, 0.03], normalizationNote: 'FCF normalizado moderado por capex de crecimiento y franquicias.' },
@@ -207,6 +216,7 @@ export const intrinsicValueByTicker = {
     cash: 4403,
     debt: 15696,
     dilutedShares: 143.8,
+    expectedEpsGrowth: 0.06,
     scenarios: {
       conservative: { fcf: 3200, wacc: 0.085, terminalGrowth: 0.015, growth: [0.015, 0.02, 0.02, 0.02, 0.02], normalizationNote: 'FCF cercano a reportado; escenario defensivo por contratos largos y deuda relevante.' },
       base: { fcf: 3500, wacc: 0.075, terminalGrowth: 0.02, growth: [0.035, 0.035, 0.035, 0.03, 0.03], normalizationNote: 'FCF normalizado moderado por visibilidad de defensa y backlog.' },
@@ -223,6 +233,7 @@ export const intrinsicValueByTicker = {
     cash: 97820,
     debt: 32929,
     dilutedShares: 5186.505,
+    expectedEpsGrowth: 0.15,
     scenarios: {
       conservative: { fcf: 30000, wacc: 0.105, terminalGrowth: 0.02, growth: [0.06, 0.055, 0.05, 0.045, 0.04], normalizationNote: 'FCF conservador por capex elevado y ciclo de semiconductores.' },
       base: { fcf: 36000, wacc: 0.095, terminalGrowth: 0.025, growth: [0.12, 0.105, 0.09, 0.075, 0.06], normalizationNote: 'FCF normalizado asume demanda AI/HPC robusta y disciplina de retorno sobre capex.' },
@@ -239,6 +250,7 @@ export const intrinsicValueByTicker = {
     cash: 10958,
     debt: 0,
     dilutedShares: 3116.652,
+    expectedEpsGrowth: 0.08,
     scenarios: {
       conservative: { fcf: 4300, wacc: 0.085, terminalGrowth: 0.015, growth: [0.015, 0.02, 0.02, 0.02, 0.02], normalizationNote: 'FCF conservador por ciclo retail y divisa.' },
       base: { fcf: 4700, wacc: 0.075, terminalGrowth: 0.02, growth: [0.035, 0.035, 0.035, 0.03, 0.03], normalizationNote: 'FCF cercano al reportado; asume continuidad del modelo operativo y caja neta.' },
@@ -255,6 +267,7 @@ export const intrinsicValueByTicker = {
     cash: 1256,
     debt: 2392,
     dilutedShares: 54.392,
+    expectedEpsGrowth: 0.10,
     scenarios: {
       conservative: { fcf: 360, wacc: 0.095, terminalGrowth: 0.015, growth: [0.025, 0.025, 0.025, 0.025, 0.02], normalizationNote: 'FCF conservador por riesgo GTF y ciclo aeroespacial.' },
       base: { fcf: 430, wacc: 0.085, terminalGrowth: 0.02, growth: [0.06, 0.055, 0.05, 0.045, 0.04], normalizationNote: 'FCF normalizado asume mejora de cash conversion y demanda de mantenimiento.' },
