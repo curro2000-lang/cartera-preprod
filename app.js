@@ -611,6 +611,7 @@ async function loadDashboard() {
             
             const pesoSugerido = parseFloat(pos.pesoSugerido) || 0;
             const pesoActual = (pos.valorActualCalculado / totalV * 100) || 0;
+            const pesoInvertido = (pos.capitalEUR / totalI * 100) || 0;
             const desviacion = (pesoActual - pesoSugerido).toFixed(1);
             const sectorKey = pos.sector || 'Sin sector';
             const intrinsicResult = calculateIntrinsicValue(intrinsicValueByTicker[pos.tickerApp]);
@@ -621,13 +622,17 @@ async function loadDashboard() {
             
             const columnaPorcentaje = `
             <td style="text-align: center; vertical-align: middle;">
-                <div style="font-size: 1.1rem; font-weight: bold;">${pesoActual.toFixed(1)}%</div>
+                <div style="font-size: 1.1rem; font-weight: bold;">${pesoInvertido.toFixed(1)}%</div>
                 <div style="font-size: 0.75rem; margin-top: 2px;">
-                    <span style="color: var(--muted);">Ideal:</span> 
+                    <span style="color: var(--muted);">Actual:</span> 
+                    <span style="font-weight: 600;">${pesoActual.toFixed(1)}%</span>
+                </div>
+                <div style="font-size: 0.75rem; margin-top: 1px;">
+                    <span style="color: var(--muted);">Ideal:</span>
                     <span style="font-weight: 600;">${pesoSugerido}%</span>
                 </div>
                 <div style="font-size: 0.7rem; color: ${colorDesviacion}; font-weight: bold; margin-top: 1px;">
-                    (${desviacion > 0 ? '+' : ''}${desviacion}%)
+                    actual ${desviacion > 0 ? '+' : ''}${desviacion} pp
                 </div>
             </td>
             `;
